@@ -3162,6 +3162,13 @@ setBedStatus=function(s){ _oBS(s); lsSave(); };
 
 renderDash();
 setTimeout(renderEkardex, 0);
+  // ตั้งค่าให้ดึงข้อมูลจากออนไลน์อัตโนมัติทุกๆ 3 นาที (180000 มิลลิวินาที)
+setInterval(function() {
+    if(isConfigured()) {
+        syncLoad(); 
+        console.log("Auto-syncing data...");
+    }
+}, 180000);
 </script>
 <!-- BED ACTION MODAL -->
 <div class="modal-overlay no-print" id="bed-modal">
