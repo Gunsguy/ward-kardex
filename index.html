@@ -1762,47 +1762,37 @@ function savePatient(){
     hn:hn,an:gv('f-an'),coverage:gv('f-coverage'),name:name,date:gv('f-date'),time:gv('f-time'),visit:gv('f-visit'),
     from:gv('f-from'),companion:gv('f-companion'),sx:gv('f-sx'),dx:gv('f-dx'),
     ud:gv('f-ud'),warn:gv('f-warn'),sz:gv('f-sz'),caseInfo:gv('f-case'),phys:gv('f-phys'),
-    eo:'',hgb:'',hct:'',rdw:'',rbc:'',
-    covid:'',elyte:'',bun:'',
-    inj:'',had:gv('f-had'),drug2:gv('f-drug2'),lab:gv('f-lab'),ectDetail:gv('f-ect-detail'),
+    had:gv('f-had'),drug2:gv('f-drug2'),lab:gv('f-lab'),ectDetail:gv('f-ect-detail'),
     labData:readLabFromForm(),
     labMonData:readLabMonFromForm(),
     todoData:readTodoFromForm(),
     smivlv:gv('f-smivlv'),doctor:gv('f-doctor'),nurse:gv('f-nurse'),status:gv('f-status')||'รับใหม่',
     svcare:readSvCare(),
-    suicide:!!readSvCare().s, accident:!!readSvCare().a,
-    violence:!!readSvCare().v, escape:!!readSvCare().e,
-    close:!!readSvCare().s,
-    cxr:gc('c-cxr'),ekg:gc('c-ekg'),ect:gc('c-ect'),iv:gc('c-iv'),ds:gc('c-ds'),
-    jvk:gc('c-jvk'),ajvk:gc('c-ajvk'),rehab:gc('c-rehab'),icod:gc('c-icod'),met1:gc('c-met1'),met2:gc('c-met2'),
-    sw:gc('c-sw'),psych:gc('c-psych'),pharm:gc('c-pharm'),nutr:gc('c-nutr'),dent:gc('c-dent'),
-    cm:gc('c-cm'),bst:gc('c-bst'),v3:gc('c-v3'),hist:gc('c-hist'),smiv1:gc('c-smiv1'),smiv0:gc('c-smiv0'),
-    coordData:readCoord(),
-    sw:readCoord().sw?readCoord().sw.checked:false,
-    psych:readCoord().psych?readCoord().psych.checked:false,
-    pharm:readCoord().pharm?readCoord().pharm.checked:false,
-    nutr:readCoord().nutr?readCoord().nutr.checked:false,
-    dent:readCoord().dent?readCoord().dent.checked:false,
-    cm:readCoord().cm?readCoord().cm.checked:false,
-    bst:readCoord().bst?readCoord().bst.checked:false,
-    v3:readCoord().v3?readCoord().v3.checked:false,
-    hist:readCoord().hist?readCoord().hist.checked:false,
-    injData:readInjFromForm(),
     notes:readNotes(),
+    coordData:readCoord(),
+    injData:readInjFromForm(),
     logs:logs.slice()
   };
   if(editingHN!==null){
     var i=DB.findIndex(function(p){return p.hn===editingHN});
     if(i>-1)DB[i]=pt; else DB.push(pt);
   } else DB.push(pt);
-  editingHN=null; logs=[];
-  // auto-assign bed if new patient and no bed yet
+
   if(BEDS.indexOf(hn)===-1){
-    var freeIdx=BEDS.indexOf(null);
-    if(freeIdx>-1) BEDS[freeIdx]=hn;
+    if(_pendingBedIdx!==null && BEDS[_pendingBedIdx]===null) BEDS[_pendingBedIdx]=hn;
+    else { var freeIdx=BEDS.indexOf(null); if(freeIdx>-1) BEDS[freeIdx]=hn; }
   }
-  alert('บันทึก "'+name+'" สำเร็จ!'+(BEDS.indexOf(hn)>-1?' เตียง '+(BEDS.indexOf(hn)+1):' (ไม่มีเตียงว่าง กรุณากำหนดเตียงจากหน้าหลัก)'));
-  clearForm(); renderDash();
+
+  editingHN=null; _pendingBedIdx=null; logs=[];
+  
+  // --- ส่วนสำคัญ: สั่งบันทึกลงเครื่อง และ ส่งขึ้น Google Sheets ทันที ---
+  lsSave(); 
+  if(isConfigured()) {
+    syncSaveAll(); // ฟังก์ชันนี้จะส่ง DB และ BEDS ทั้งหมดไปที่ Cloud
+  }
+  
+  alert('บันทึกเรียบร้อย!');
+  clearForm(); renderDash(); buildEkList(); renderEkardex();
   nav('dashboard',g('nb-dashboard'));
 }
 
@@ -3169,6 +3159,12 @@ setInterval(function() {
         console.log("Auto-syncing data...");
     }
 }, 180000);
+  // เมื่อเปิดเว็บมา ให้โหลดจากออนไลน์ทันทีถ้าตั้งค่าไว้แล้ว
+window.addEventListener('load', function() {
+  if(isConfigured()) {
+    setTimeout(syncLoad, 1000); // รอ 1 วินาทีแล้วโหลดข้อมูลจาก Sheets
+  }
+});
 </script>
 <!-- BED ACTION MODAL -->
 <div class="modal-overlay no-print" id="bed-modal">
