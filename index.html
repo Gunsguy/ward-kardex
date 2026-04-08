@@ -125,6 +125,13 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
   .doc-table input,.doc-table select,.doc-table textarea{color:#000}
   .np-tag{border:1pt solid #185FA5;background:#fff;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .log-del{display:none}
+
+  /* ซ่อน check-cell ที่ไม่ได้ติ๊ก */
+  .check-cell:has(input[type="checkbox"]:not(:checked)){display:none!important}
+  /* ซ่อน coord-row ที่ไม่ได้ติ๊ก */
+  .coord-row:has(input[type="checkbox"]:not(:checked)){display:none!important}
+  /* ถ้าทุก check-cell ในแถวซ่อนหมด ให้ซ่อน section-bar ด้านบนด้วย */
+  .check-section-empty{display:none!important}
 }
 </style>
 </head>
@@ -145,6 +152,7 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
     <span id="sync-status" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#f0f0f0;color:#555;white-space:nowrap">ยังไม่เชื่อมต่อ</span>
     <button onclick="syncLoad()" title="โหลดข้อมูลใหม่" style="padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#fff;font-size:12px;cursor:pointer;color:#555" class="no-print">&#8635;</button>
     <button onclick="openSettings()" title="ตั้งค่า" style="padding:3px 8px;border:1px solid #ccc;border-radius:4px;background:#fff;font-size:13px;cursor:pointer;color:#555" class="no-print">⚙</button>
+    <button onclick="openArchive()" title="คลังข้อมูล" style="padding:3px 9px;border:1px solid #ddd;border-radius:4px;background:#f8faff;font-size:12px;cursor:pointer;color:#185FA5;font-weight:600" class="no-print">🗄️ คลัง</button>
   </div>
 </div>
 
@@ -161,7 +169,6 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
           <option>เวรเช้า</option><option>เวรบ่าย</option><option>เวรดึก</option>
         </select>
         <button onclick="buildShiftSummary()" style="padding:4px 12px;background:#185FA5;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">&#8635; อัปเดต</button>
-        <button onclick="printPage('page-dashboard')" style="padding:4px 12px;background:#16a34a;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">&#128424; พิมพ์</button>
       </div>
     </div>
     <div id="ss-print-sub" style="font-size:12px;color:#555;margin-bottom:8px;display:none"></div>
@@ -227,7 +234,7 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
     <select id="ek-jump" onchange="ekJump(this.value)" style="border:1px solid #ccc;border-radius:5px;padding:3px 8px;font-size:11px;font-family:inherit;background:#fff;max-width:150px"></select>
     <button onclick="ekNav(1)" style="width:30px;height:30px;border:1px solid #ddd;border-radius:5px;background:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#8594;</button>
     <button onclick="ekAddNew()" style="padding:4px 12px;background:#185FA5;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">+ รับใหม่</button>
-    <button onclick="printPage('page-ekardex')" style="padding:4px 10px;background:#64748b;color:#fff;border:none;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit">🖨️</button>
+    
   </div>
 
   <!-- Tab pills -->
@@ -379,10 +386,29 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
         <th>ยาอื่นๆ</th><td colspan="3"><input type="text" id="f-drug2"></td>
       </tr>
       <tr>
-        <th>ตาม Lab</th>
-        <td colspan="2"><input type="text" id="f-lab" placeholder="เช่น CPK, LFT, Urine..."></td>
-        <th>ECT รายละเอียด</th>
-        <td colspan="3"><input type="text" id="f-ect-detail" placeholder="เช่น mECT x 9 ครั้ง วัน 27,30..."></td>
+        <th style="vertical-align:top;padding-top:8px">ECT</th>
+        <td colspan="6" style="padding:6px 8px">
+          <div id="f-ect-editor" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px">
+            <select id="f-ect-type" onchange="updateEctSummary()" style="border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit;background:#fff">
+              <option value="">— ประเภท —</option>
+              <option value="ไม่มี">ไม่มี</option>
+              <option value="mECT">mECT</option>
+              <option value="ECT">ECT</option>
+            </select>
+            <span style="font-size:12px;color:#555">×</span>
+            <input type="number" id="f-ect-count" min="1" max="20" placeholder="จำนวน" onchange="updateEctDates()" style="width:55px;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit">
+            <span style="font-size:12px;color:#555">ครั้ง วันที่</span>
+            <div id="f-ect-dates" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center"></div>
+            <button type="button" onclick="addEctDate()" style="padding:2px 8px;border:1px solid #185FA5;border-radius:4px;background:#f0f7ff;color:#185FA5;font-size:11px;cursor:pointer;font-family:inherit">+ วัน</button>
+            <button type="button" onclick="confirmEct()" style="padding:2px 10px;border:none;border-radius:4px;background:#185FA5;color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">ยืนยัน</button>
+          </div>
+          <div id="f-ect-display" style="display:none;display:flex;align-items:center;gap:8px">
+            <span id="f-ect-summary" style="font-size:12px;color:#1e3a6e;background:#eff6ff;border-radius:4px;padding:3px 10px;flex:1"></span>
+            <button type="button" onclick="editEct()" style="padding:2px 8px;border:1px solid #94a3b8;border-radius:4px;background:#fff;color:#555;font-size:11px;cursor:pointer;font-family:inherit">✏️ แก้ไข</button>
+            <button type="button" onclick="clearEctForm()" style="padding:2px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;font-size:11px;cursor:pointer;font-family:inherit">ลบ</button>
+          </div>
+          <input type="hidden" id="f-ect-detail">
+        </td>
       </tr>
       <tr><td colspan="7" class="section-bar">เฝ้าระวัง SVCARE — ระดับความเสี่ยง (A = น้อยสุด, I = มากสุด) | ข้อมูลนี้จะดึงไปแผนการพยาบาลอัตโนมัติ</td></tr>
       <tr>
@@ -390,14 +416,22 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px 16px">
 
             <!-- S -->
-            <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;align-items:center;gap:4px;grid-column:span 1">
               <span style="font-size:13px;font-weight:700;color:#dc2626;min-width:18px">S</span>
-              <span style="font-size:11px;color:#555;min-width:64px">Suicide</span>
-              <select id="sv-s" onchange="syncSvCare()" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:3px 5px;font-size:12px;font-family:inherit;background:#fff">
+              <span style="font-size:11px;color:#555;min-width:44px">Suicide</span>
+              <select id="sv-s-type" onchange="syncSuicide()" style="width:54px;border:1px solid #ccc;border-radius:4px;padding:3px 4px;font-size:11px;font-family:inherit;background:#fff" title="S1=อารมณ์/ซึมเศร้า, S2=จากอาการทางจิต, S3=ประชด/เรียกร้อง">
                 <option value="">ไม่มี</option>
-                <option>A</option><option>B</option><option>C</option><option>D</option>
-                <option>E</option><option>F</option><option>G</option><option>H</option><option>I</option>
+                <option value="S1">S1</option>
+                <option value="S2">S2</option>
+                <option value="S3">S3</option>
               </select>
+              <select id="sv-s-level" onchange="syncSuicide()" style="width:80px;border:1px solid #ccc;border-radius:4px;padding:3px 4px;font-size:11px;font-family:inherit;background:#fff" title="Mild=มีความคิด, Moderate=เตรียมการแล้ว, Severe=ลงมือทำแล้ว" disabled>
+                <option value="">ระดับ</option>
+                <option value="Mild">Mild</option>
+                <option value="Moderate">Moderate</option>
+                <option value="Severe">Severe</option>
+              </select>
+              <input type="text" id="sv-s-note" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:2px 0;background:transparent" oninput="syncSuicide()">
             </div>
 
             <!-- V -->
@@ -460,7 +494,7 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
           <div id="svcare-summary" style="margin-top:6px;min-height:20px;display:flex;flex-wrap:wrap;gap:4px"></div>
         </td>
       </tr>
-      <tr><td colspan="7" class="section-bar">SMI-V / Level</td></tr>
+      <tr class="print-section-smiv"><td colspan="7" class="section-bar">SMI-V / Level</td></tr>
       <tr>
         <td colspan="7" style="padding:5px 10px">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -477,31 +511,31 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
         </td>
       </tr>
 
-      <tr><td colspan="7" class="section-bar">หัตถการ / การตรวจ (ข้อมูลนี้จะดึงไปแผนการพยาบาลอัตโนมัติ)</td></tr>
+      <tr class="print-section-hattakan"><td colspan="7" class="section-bar">หัตถการ / การตรวจ (ข้อมูลนี้จะดึงไปแผนการพยาบาลอัตโนมัติ)</td></tr>
       <tr>
         <td colspan="7" style="padding:5px 10px">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px 12px">
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-cxr" onchange="toggleNote('c-cxr','n-cxr')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-cxr" style="font-size:12px;white-space:nowrap">CXR</label>
               <input type="text" id="n-cxr" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-ekg" onchange="toggleNote('c-ekg','n-ekg')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-ekg" style="font-size:12px;white-space:nowrap">EKG</label>
               <input type="text" id="n-ekg" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-ect" onchange="toggleNote('c-ect','n-ect')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-ect" style="font-size:12px;white-space:nowrap">ECT</label>
               <input type="text" id="n-ect" placeholder="รายละเอียด ครั้งที่..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-iv" onchange="toggleNote('c-iv','n-iv')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-iv" style="font-size:12px;white-space:nowrap">On IV</label>
               <input type="text" id="n-iv" placeholder="ยา/อัตรา..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-ds" onchange="toggleNote('c-ds','n-ds')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-ds" style="font-size:12px;white-space:nowrap">D/S แผล</label>
               <input type="text" id="n-ds" placeholder="บริเวณแผล..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
@@ -510,36 +544,36 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
         </td>
       </tr>
 
-      <tr><td colspan="7" class="section-bar">กิจกรรมบำบัด</td></tr>
+      <tr class="print-section-activity"><td colspan="7" class="section-bar">กิจกรรมบำบัด</td></tr>
       <tr>
         <td colspan="7" style="padding:5px 10px">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px 12px">
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-jvk" onchange="toggleNote('c-jvk','n-jvk')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-jvk" style="font-size:12px;white-space:nowrap">กลุ่ม JVK</label>
               <input type="text" id="n-jvk" placeholder="วันที่..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-ajvk" onchange="toggleNote('c-ajvk','n-ajvk')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-ajvk" style="font-size:12px;white-space:nowrap">A-JVK</label>
               <input type="text" id="n-ajvk" placeholder="วันที่..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-rehab" onchange="toggleNote('c-rehab','n-rehab')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-rehab" style="font-size:12px;white-space:nowrap">กลุ่มฟื้นฟู</label>
               <input type="text" id="n-rehab" placeholder="วันที่..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-icod" onchange="toggleNote('c-icod','n-icod')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-icod" style="font-size:12px;white-space:nowrap">ICOD-R</label>
               <input type="text" id="n-icod" placeholder="วันที่..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-met1" onchange="toggleNote('c-met1','n-met1')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-met1" style="font-size:12px;white-space:nowrap">MET/BI ครั้ง 1</label>
               <input type="text" id="n-met1" placeholder="วันที่/ผล..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-met2" onchange="toggleNote('c-met2','n-met2')" style="width:13px;height:13px;accent-color:#185FA5">
               <label for="c-met2" style="font-size:12px;white-space:nowrap">MET/BI ครั้ง 2</label>
               <input type="text" id="n-met2" placeholder="วันที่/ผล..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
@@ -548,51 +582,51 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
         </td>
       </tr>
 
-      <tr><td colspan="7" class="section-bar">ประสานสหวิชาชีพ (ข้อมูลนี้จะดึงไปแผนการพยาบาลอัตโนมัติ)</td></tr>
+      <tr class="print-section-coord"><td colspan="7" class="section-bar">ประสานสหวิชาชีพ (ข้อมูลนี้จะดึงไปแผนการพยาบาลอัตโนมัติ)</td></tr>
       <tr>
         <td colspan="7" style="padding:5px 10px">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px 12px">
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-sw" onchange="coordToggle('sw')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-sw" style="font-size:12px;white-space:nowrap;cursor:pointer">SW (นักสังคม)</label>
               <input type="text" id="n-sw" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-psych" onchange="coordToggle('psych')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-psych" style="font-size:12px;white-space:nowrap;cursor:pointer">นักจิตวิทยา</label>
               <input type="text" id="n-psych" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-pharm" onchange="coordToggle('pharm')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-pharm" style="font-size:12px;white-space:nowrap;cursor:pointer">เภสัชกร</label>
               <input type="text" id="n-pharm" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-nutr" onchange="coordToggle('nutr')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-nutr" style="font-size:12px;white-space:nowrap;cursor:pointer">โภชนากร</label>
               <input type="text" id="n-nutr" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-dent" onchange="coordToggle('dent')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-dent" style="font-size:12px;white-space:nowrap;cursor:pointer">ทันตกรรม</label>
               <input type="text" id="n-dent" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-cm" onchange="coordToggle('cm')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-cm" style="font-size:12px;white-space:nowrap;cursor:pointer">CM</label>
               <input type="text" id="n-cm" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-bst" onchange="coordToggle('bst')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-bst" style="font-size:12px;white-space:nowrap;cursor:pointer">บสต.</label>
               <input type="text" id="n-bst" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-v3" onchange="coordToggle('v3')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-v3" style="font-size:12px;white-space:nowrap;cursor:pointer">V3</label>
               <input type="text" id="n-v3" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
             </div>
-            <div style="display:flex;align-items:center;gap:6px">
+            <div class="check-cell" style="display:flex;align-items:center;gap:6px">
               <input type="checkbox" id="c-hist" onchange="coordToggle('hist')" style="width:13px;height:13px;accent-color:#185FA5;flex-shrink:0">
               <label for="c-hist" style="font-size:12px;white-space:nowrap;cursor:pointer">ค้างซักประวัติ</label>
               <input type="text" id="n-hist" placeholder="รายละเอียด..." style="flex:1;border:none;border-bottom:1px solid #ddd;font-size:11px;outline:none;font-family:inherit;padding:1px 0;display:none">
@@ -623,11 +657,11 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
           <div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:8px;flex-wrap:nowrap;overflow-x:auto">
             <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
               <label style="font-size:11px;color:#777;font-weight:500">วันที่</label>
-              <input type="date" id="log-date" style="border:1px solid #ccc!important;border-radius:4px;padding:4px 7px;font-size:12px;background:#fff;font-family:inherit;width:130px;height:30px;box-sizing:border-box">
+              <input type="date" id="log-date" style="border:1px solid #ccc!important;border-radius:4px;padding:4px 7px;font-size:12px;background:#fff;font-family:inherit;width:130px;height:30px;box-sizing:border-box" onchange="logAutoShiftIfToday()">
             </div>
             <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
               <label style="font-size:11px;color:#777;font-weight:500">เวลา</label>
-              <input type="time" id="log-time" style="border:1px solid #ccc!important;border-radius:4px;padding:4px 7px;font-size:12px;background:#fff;font-family:inherit;width:100px;height:30px;box-sizing:border-box">
+              <input type="time" id="log-time" style="border:1px solid #ccc!important;border-radius:4px;padding:4px 7px;font-size:12px;background:#fff;font-family:inherit;width:100px;height:30px;box-sizing:border-box" onchange="logAutoShiftIfToday()">
             </div>
             <div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">
               <label style="font-size:11px;color:#777;font-weight:500">เวร</label>
@@ -675,8 +709,26 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
       </td></tr>
       <tr><td colspan="7" class="section-bar">ผู้รับผิดชอบ</td></tr>
       <tr>
-        <th>แพทย์เจ้าของไข้</th><td colspan="2"><input type="text" id="f-doctor"></td>
-        <th>พยาบาลเจ้าของไข้</th><td colspan="3"><input type="text" id="f-nurse"></td>
+        <th>แพทย์เจ้าของไข้</th>
+        <td colspan="2" style="padding:4px 8px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <select id="f-doctor-sel" onchange="pickStaff('doctor')" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit;background:#fff">
+              <option value="">— เลือกแพทย์ —</option>
+            </select>
+            <input type="hidden" id="f-doctor">
+            <button type="button" onclick="openStaffMgr('doctor')" title="จัดการรายชื่อแพทย์" style="padding:2px 8px;border:1px solid #ddd;border-radius:4px;background:#f8f8f8;font-size:13px;cursor:pointer">⚙</button>
+          </div>
+        </td>
+        <th>พยาบาลเจ้าของไข้</th>
+        <td colspan="3" style="padding:4px 8px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <select id="f-nurse-sel" onchange="pickStaff('nurse')" style="flex:1;border:1px solid #ccc;border-radius:4px;padding:3px 6px;font-size:12px;font-family:inherit;background:#fff">
+              <option value="">— เลือกพยาบาล —</option>
+            </select>
+            <input type="hidden" id="f-nurse">
+            <button type="button" onclick="openStaffMgr('nurse')" title="จัดการรายชื่อพยาบาล" style="padding:2px 8px;border:1px solid #ddd;border-radius:4px;background:#f8f8f8;font-size:13px;cursor:pointer">⚙</button>
+          </div>
+        </td>
       </tr>
       <tr>
         <th>สถานะผู้ป่วย</th>
@@ -691,7 +743,7 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
   <div class="action-bar no-print">
     <button class="btn-outline" onclick="cancelEdit()">ยกเลิก</button>
     <button class="btn-outline" onclick="clearForm()">ล้างฟอร์ม</button>
-    <button class="btn-green" onclick="printPage('page-form')">&#128424; พิมพ์</button>
+    
     <button class="btn-primary" onclick="savePatient()">บันทึกผู้ป่วย</button>
   </div>
 </div>
@@ -736,7 +788,7 @@ body{font-family:'Sarabun',sans-serif;font-size:13px;color:#111;background:#f0f2
     </div>
   </div>
   <div class="action-bar no-print">
-    <button class="btn-green" onclick="printPage('page-handover')">&#128424; พิมพ์ใบส่งเวร</button>
+    
   </div>
 </div>
 
@@ -966,8 +1018,206 @@ function writeTodoToForm(data){ _todoData=(data||[]).slice(); renderTodos(); }
 function clearTodoForm(){ _todoData=[]; renderTodos(); }
 
 
-var editingHN = null;
-var logs = [];
+/* ══════════════════════════════════════════════
+   STAFF LIST MANAGEMENT
+   ══════════════════════════════════════════════ */
+function getStaffList(type){
+  try{ return JSON.parse(localStorage.getItem('ekarde_staff_'+type)||'[]'); }catch(e){return [];}
+}
+function saveStaffList(type,arr){
+  try{ localStorage.setItem('ekarde_staff_'+type,JSON.stringify(arr)); }catch(e){}
+}
+
+function renderStaffDropdown(type){
+  var sel=g('f-'+type+'-sel'); if(!sel) return;
+  var arr=getStaffList(type);
+  var cur=gv('f-'+type)||'';
+  sel.innerHTML='<option value="">— เลือก'+(type==='doctor'?'แพทย์':'พยาบาล')+' —</option>'+
+    arr.map(function(n){
+      return'<option value="'+n+'"'+(n===cur?' selected':'')+'>'+n+'</option>';
+    }).join('');
+}
+
+function pickStaff(type){
+  var sel=g('f-'+type+'-sel'), inp=g('f-'+type);
+  if(sel&&inp) inp.value=sel.value||'';
+}
+
+function openStaffMgr(type){
+  var arr=getStaffList(type);
+  var label=type==='doctor'?'แพทย์':'พยาบาล';
+  var iS='width:100%;border:1px solid #ddd;border-radius:4px;padding:6px 8px;font-size:12px;font-family:inherit';
+  var listHtml=arr.length
+    ? arr.map(function(n,i){
+        return'<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #f0f0f0">'+
+          '<span style="flex:1;font-size:12px">'+n+'</span>'+
+          '<button onclick="staffDelete(\''+type+'\','+i+')" style="padding:2px 8px;border:1px solid #fca5a5;border-radius:4px;background:#fff;color:#dc2626;font-size:11px;cursor:pointer;font-family:inherit">ลบ</button>'+
+        '</div>';
+      }).join('')
+    : '<div style="font-size:11px;color:#bbb;padding:6px 0">ยังไม่มีรายชื่อ</div>';
+
+  var html=
+    '<div style="margin-bottom:12px">'+
+      '<div style="font-size:12px;font-weight:600;color:#1e3a6e;margin-bottom:6px">รายชื่อ'+label+'</div>'+
+      '<div id="staff-list-'+type+'">'+listHtml+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:6px;align-items:center">'+
+      '<input type="text" id="staff-new-'+type+'" placeholder="ชื่อ'+label+'ใหม่..." style="'+iS+'" onkeydown="if(event.key===\'Enter\')staffAdd(\''+type+'\')">'+
+      '<button onclick="staffAdd(\''+type+'\')" style="padding:6px 12px;background:#185FA5;color:#fff;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">+ เพิ่ม</button>'+
+    '</div>';
+
+  g('modal-title').innerHTML='⚙ จัดการรายชื่อ'+label+' <button class="close-btn" onclick="closeModal()">&#215;</button>';
+  g('modal-body').innerHTML=html;
+  document.querySelectorAll('#modal .btn-outline,#modal .btn-primary').forEach(function(b){b.style.display='none';});
+  g('modal').classList.add('open');
+  setTimeout(function(){var el=g('staff-new-'+type);if(el)el.focus();},100);
+}
+
+function staffAdd(type){
+  var inp=document.getElementById('staff-new-'+type); if(!inp) return;
+  var name=inp.value.trim(); if(!name) return;
+  var arr=getStaffList(type);
+  if(arr.indexOf(name)>=0){alert('มีชื่อนี้อยู่แล้ว');return;}
+  arr.push(name); saveStaffList(type,arr);
+  inp.value='';
+  openStaffMgr(type); renderStaffDropdown(type);
+}
+
+function staffDelete(type,idx){
+  var arr=getStaffList(type);
+  if(!confirm('ลบ "'+arr[idx]+'" ออก?')) return;
+  arr.splice(idx,1); saveStaffList(type,arr);
+  openStaffMgr(type); renderStaffDropdown(type);
+}
+
+/* ── ECT DATE BUILDER ── */
+var _ectDates = [];
+
+function updateEctDates(){
+  var countEl=g('f-ect-count');
+  var count=countEl?parseInt(countEl.value)||0:0;
+  while(_ectDates.length<count) _ectDates.push('');
+  if(_ectDates.length>count) _ectDates=_ectDates.slice(0,count);
+  renderEctDates(); updateEctSummary();
+}
+
+function addEctDate(){
+  _ectDates.push('');
+  var countEl=g('f-ect-count'); if(countEl) countEl.value=_ectDates.length;
+  renderEctDates(); updateEctSummary();
+  setTimeout(function(){
+    var inputs=document.querySelectorAll('.ect-date-input');
+    if(inputs.length) inputs[inputs.length-1].focus();
+  },50);
+}
+
+function removeEctDate(idx){
+  _ectDates.splice(idx,1);
+  var countEl=g('f-ect-count'); if(countEl) countEl.value=_ectDates.length;
+  renderEctDates(); updateEctSummary();
+}
+
+function renderEctDates(){
+  var wrap=g('f-ect-dates'); if(!wrap) return;
+  wrap.innerHTML=_ectDates.map(function(v,i){
+    return'<div style="display:flex;align-items:center;gap:2px">'+
+      '<input type="date" class="ect-date-input" value="'+v+'" onchange="setEctDate('+i+',this.value)" '+
+        'style="border:1px solid #ccc;border-radius:4px;padding:2px 5px;font-size:11px;font-family:inherit;width:130px;height:26px">'+
+      '<button type="button" onclick="removeEctDate('+i+')" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:0;line-height:1">&#10005;</button>'+
+    '</div>';
+  }).join('');
+}
+
+function setEctDate(idx,val){ _ectDates[idx]=val; updateEctSummary(); }
+
+function updateEctSummary(){
+  var ectType=gv('f-ect-type')||'';
+  var count=_ectDates.length;
+  var hiddenEl=g('f-ect-detail');
+  if(!count||!ectType){ if(hiddenEl) hiddenEl.value=''; return; }
+  var months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var dateStrs=_ectDates.map(function(v){
+    if(!v) return '_';
+    var d=new Date(v); return d.getDate()+' '+months[d.getMonth()];
+  });
+  var summary=ectType+' × '+count+' ครั้ง วันที่ '+dateStrs.join(', ');
+  var summaryEl=g('f-ect-summary'); if(summaryEl) summaryEl.textContent=summary;
+  if(hiddenEl) hiddenEl.value=summary;
+}
+
+function confirmEct(){
+  var ectType=gv('f-ect-type')||'';
+  if(!ectType){ alert('กรุณาเลือกประเภท ECT'); return; }
+  if(ectType!=='ไม่มี'&&!_ectDates.length){ alert('กรุณาเพิ่มวันที่อย่างน้อย 1 วัน'); return; }
+  if(ectType==='ไม่มี'){
+    var summaryEl=g('f-ect-summary'); if(summaryEl) summaryEl.textContent='ไม่มี ECT';
+    var hiddenEl=g('f-ect-detail'); if(hiddenEl) hiddenEl.value='ไม่มี';
+  } else {
+    updateEctSummary();
+  }
+  var ed=g('f-ect-editor'), dp=g('f-ect-display');
+  if(ed) ed.style.display='none';
+  if(dp) dp.style.display='flex';
+}
+
+function editEct(){
+  var ed=g('f-ect-editor'), dp=g('f-ect-display');
+  if(ed) ed.style.display='flex';
+  if(dp) dp.style.display='none';
+}
+
+function clearEctForm(){
+  _ectDates=[];
+  var typeEl=g('f-ect-type'),countEl=g('f-ect-count');
+  if(typeEl) typeEl.value='';
+  if(countEl) countEl.value='';
+  if(g('f-ect-dates')) g('f-ect-dates').innerHTML='';
+  var hiddenEl=g('f-ect-detail'); if(hiddenEl) hiddenEl.value='';
+  var summaryEl=g('f-ect-summary'); if(summaryEl) summaryEl.textContent='';
+  // กลับไปแสดง editor
+  var ed=g('f-ect-editor'), dp=g('f-ect-display');
+  if(ed) ed.style.display='flex';
+  if(dp) dp.style.display='none';
+}
+
+function writeEctToForm(data){
+  if(!data) return;
+  var typeEl=g('f-ect-type'),countEl=g('f-ect-count');
+  if(typeEl) typeEl.value=data.type||'';
+  _ectDates=(data.dates||[]).slice();
+  if(countEl) countEl.value=_ectDates.length||'';
+  renderEctDates();
+  updateEctSummary();
+  // ถ้ามีข้อมูลแล้วแสดง summary view
+  if(data.type&&_ectDates.length){
+    var ed=g('f-ect-editor'),dp=g('f-ect-display');
+    if(ed) ed.style.display='none';
+    if(dp) dp.style.display='flex';
+  }
+}
+
+/* ── THAI DATE DISPLAY HELPER ── */
+var _thMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function thDateDisplay(inputId, displayId){
+  var inp=document.getElementById(inputId);
+  var disp=document.getElementById(displayId);
+  if(!inp||!disp) return;
+  if(!inp.value){ disp.textContent='เลือกวันที่'; disp.style.color='#94a3b8'; return; }
+  var d=new Date(inp.value);
+  var thai=d.getDate()+' '+_thMonths[d.getMonth()]+' '+(d.getFullYear()+543);
+  disp.textContent=thai;
+  disp.style.color='#185FA5';
+}
+
+// เรียกเมื่อโหลดข้อมูลเข้าฟอร์ม
+function refreshThaiDateDisplays(){
+  var pairs=[['f-date','f-date-display'],['ss-date','ss-date-display'],
+             ['ho-date','ho-date-display'],['np-date','np-date-display']];
+  pairs.forEach(function(p){ thDateDisplay(p[0],p[1]); });
+}
+
+
 function adjVisit(d){
   var el=g('f-visit');
   var v=parseInt(el.value)||1;
@@ -1151,23 +1401,57 @@ var SVCARE_KEYS = ['s','v','c','a','r','e'];
 var SVCARE_LABELS = {s:'Suicide',v:'Violence',c:'Comorbidity',a:'Accident',r:'Restraint',e:'Escape'};
 var SVCARE_COLORS = {s:'#dc2626',v:'#dc2626',c:'#d97706',a:'#d97706',r:'#7c3aed',e:'#185FA5'};
 
+function syncSuicide(){
+  var typeEl=document.getElementById('sv-s-type');
+  var levelEl=document.getElementById('sv-s-level');
+  var noteEl=document.getElementById('sv-s-note');
+  if(!typeEl||!levelEl) return;
+  levelEl.disabled=!typeEl.value;
+  if(!typeEl.value){ levelEl.value=''; if(noteEl) noteEl.value=''; }
+  syncSvCare();
+}
+
 function syncSvCare(){
   var el=document.getElementById('svcare-summary');
-  if(!el)return;
-  var badges=SVCARE_KEYS.map(function(k){
+  if(!el) return;
+  var badges=[];
+
+  // S — แสดง type + level
+  var typeEl=document.getElementById('sv-s-type');
+  var levelEl=document.getElementById('sv-s-level');
+  var sType=typeEl?typeEl.value:'';
+  var sLevel=levelEl?levelEl.value:'';
+  if(sType){
+    var sNoteEl=document.getElementById('sv-s-note');
+    var sNote=sNoteEl?sNoteEl.value:'';
+    var sVal=sType+(sLevel?' '+sLevel:'')+(sNote?' — '+sNote:'');
+    badges.push('<span style="display:inline-flex;align-items:center;background:#fff;border:1.5px solid '+SVCARE_COLORS['s']+';border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;color:'+SVCARE_COLORS['s']+';white-space:nowrap">S '+sVal+'</span>');
+  }
+
+  // V, C, A, R, E
+  ['v','c','a','r','e'].forEach(function(k){
     var sel=document.getElementById('sv-'+k);
     var val=sel?sel.value:'';
-    if(!val)return'';
-    return'<span style="display:inline-flex;align-items:center;background:#fff;border:1.5px solid '+SVCARE_COLORS[k]+';border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;color:'+SVCARE_COLORS[k]+';white-space:nowrap">'+
-      k.toUpperCase()+val+
-    '</span>';
-  }).filter(Boolean).join('');
-  el.innerHTML=badges||'<span style="font-size:11px;color:#ccc">ไม่มีการเฝ้าระวัง</span>';
+    if(!val) return;
+    badges.push('<span style="display:inline-flex;align-items:center;background:#fff;border:1.5px solid '+SVCARE_COLORS[k]+';border-radius:4px;padding:2px 8px;font-size:12px;font-weight:700;color:'+SVCARE_COLORS[k]+';white-space:nowrap">'+k.toUpperCase()+val+'</span>');
+  });
+
+  el.innerHTML=badges.length?badges.join(''):'<span style="font-size:11px;color:#ccc">ไม่มีการเฝ้าระวัง</span>';
 }
 
 function readSvCare(){
   var out={};
-  SVCARE_KEYS.forEach(function(k){
+  // S — เก็บเป็น "S1 Mild" หรือ "S2 Severe" ฯลฯ
+  var typeEl=document.getElementById('sv-s-type');
+  var levelEl=document.getElementById('sv-s-level');
+  var sType=typeEl?typeEl.value:'';
+  var sLevel=levelEl?levelEl.value:'';
+  var sNoteEl=document.getElementById('sv-s-note');
+  var sNote=sNoteEl?sNoteEl.value:'';
+  out['s']=sType?(sType+(sLevel?' '+sLevel:'')):'';
+  out['s_note']=sNote;
+  // V, C, A, R, E
+  ['v','c','a','r','e'].forEach(function(k){
     var sel=document.getElementById('sv-'+k);
     out[k]=sel?sel.value:'';
   });
@@ -1175,7 +1459,20 @@ function readSvCare(){
 }
 
 function writeSvCare(data){
-  SVCARE_KEYS.forEach(function(k){
+  // S — แยก type และ level ออก
+  var typeEl=document.getElementById('sv-s-type');
+  var levelEl=document.getElementById('sv-s-level');
+  var sVal=(data&&data['s'])||'';
+  if(typeEl&&levelEl){
+    var parts=sVal.split(' ');
+    typeEl.value=parts[0]||'';
+    levelEl.value=parts[1]||'';
+    levelEl.disabled=!typeEl.value;
+    var sNoteEl=document.getElementById('sv-s-note');
+    if(sNoteEl) sNoteEl.value=(data&&data['s_note'])||'';
+  }
+  // V, C, A, R, E
+  ['v','c','a','r','e'].forEach(function(k){
     var sel=document.getElementById('sv-'+k);
     if(sel) sel.value=(data&&data[k])||'';
   });
@@ -1183,7 +1480,13 @@ function writeSvCare(data){
 }
 
 function clearSvCare(){
-  SVCARE_KEYS.forEach(function(k){
+  var typeEl=document.getElementById('sv-s-type');
+  var levelEl=document.getElementById('sv-s-level');
+  if(typeEl) typeEl.value='';
+  if(levelEl){ levelEl.value=''; levelEl.disabled=true; }
+  var sNoteEl=document.getElementById('sv-s-note');
+  if(sNoteEl) sNoteEl.value='';
+  ['v','c','a','r','e'].forEach(function(k){
     var sel=document.getElementById('sv-'+k);
     if(sel) sel.value='';
   });
@@ -1762,37 +2065,47 @@ function savePatient(){
     hn:hn,an:gv('f-an'),coverage:gv('f-coverage'),name:name,date:gv('f-date'),time:gv('f-time'),visit:gv('f-visit'),
     from:gv('f-from'),companion:gv('f-companion'),sx:gv('f-sx'),dx:gv('f-dx'),
     ud:gv('f-ud'),warn:gv('f-warn'),sz:gv('f-sz'),caseInfo:gv('f-case'),phys:gv('f-phys'),
-    had:gv('f-had'),drug2:gv('f-drug2'),lab:gv('f-lab'),ectDetail:gv('f-ect-detail'),
+    eo:'',hgb:'',hct:'',rdw:'',rbc:'',
+    covid:'',elyte:'',bun:'',
+    inj:'',had:gv('f-had'),drug2:gv('f-drug2'),ectDetail:gv('f-ect-detail'),ectData:readEctFromForm(),
     labData:readLabFromForm(),
     labMonData:readLabMonFromForm(),
     todoData:readTodoFromForm(),
     smivlv:gv('f-smivlv'),doctor:gv('f-doctor'),nurse:gv('f-nurse'),status:gv('f-status')||'รับใหม่',
     svcare:readSvCare(),
-    notes:readNotes(),
+    suicide:!!readSvCare().s, accident:!!readSvCare().a,
+    violence:!!readSvCare().v, escape:!!readSvCare().e,
+    close:!!readSvCare().s,
+    cxr:gc('c-cxr'),ekg:gc('c-ekg'),ect:gc('c-ect'),iv:gc('c-iv'),ds:gc('c-ds'),
+    jvk:gc('c-jvk'),ajvk:gc('c-ajvk'),rehab:gc('c-rehab'),icod:gc('c-icod'),met1:gc('c-met1'),met2:gc('c-met2'),
+    sw:gc('c-sw'),psych:gc('c-psych'),pharm:gc('c-pharm'),nutr:gc('c-nutr'),dent:gc('c-dent'),
+    cm:gc('c-cm'),bst:gc('c-bst'),v3:gc('c-v3'),hist:gc('c-hist'),smiv1:gc('c-smiv1'),smiv0:gc('c-smiv0'),
     coordData:readCoord(),
+    sw:readCoord().sw?readCoord().sw.checked:false,
+    psych:readCoord().psych?readCoord().psych.checked:false,
+    pharm:readCoord().pharm?readCoord().pharm.checked:false,
+    nutr:readCoord().nutr?readCoord().nutr.checked:false,
+    dent:readCoord().dent?readCoord().dent.checked:false,
+    cm:readCoord().cm?readCoord().cm.checked:false,
+    bst:readCoord().bst?readCoord().bst.checked:false,
+    v3:readCoord().v3?readCoord().v3.checked:false,
+    hist:readCoord().hist?readCoord().hist.checked:false,
     injData:readInjFromForm(),
+    notes:readNotes(),
     logs:logs.slice()
   };
   if(editingHN!==null){
     var i=DB.findIndex(function(p){return p.hn===editingHN});
     if(i>-1)DB[i]=pt; else DB.push(pt);
   } else DB.push(pt);
-
+  editingHN=null; logs=[];
+  // auto-assign bed if new patient and no bed yet
   if(BEDS.indexOf(hn)===-1){
-    if(_pendingBedIdx!==null && BEDS[_pendingBedIdx]===null) BEDS[_pendingBedIdx]=hn;
-    else { var freeIdx=BEDS.indexOf(null); if(freeIdx>-1) BEDS[freeIdx]=hn; }
+    var freeIdx=BEDS.indexOf(null);
+    if(freeIdx>-1) BEDS[freeIdx]=hn;
   }
-
-  editingHN=null; _pendingBedIdx=null; logs=[];
-  
-  // --- ส่วนสำคัญ: สั่งบันทึกลงเครื่อง และ ส่งขึ้น Google Sheets ทันที ---
-  lsSave(); 
-  if(isConfigured()) {
-    syncSaveAll(); // ฟังก์ชันนี้จะส่ง DB และ BEDS ทั้งหมดไปที่ Cloud
-  }
-  
-  alert('บันทึกเรียบร้อย!');
-  clearForm(); renderDash(); buildEkList(); renderEkardex();
+  alert('บันทึก "'+name+'" สำเร็จ!'+(BEDS.indexOf(hn)>-1?' เตียง '+(BEDS.indexOf(hn)+1):' (ไม่มีเตียงว่าง กรุณากำหนดเตียงจากหน้าหลัก)'));
+  clearForm(); renderDash();
   nav('dashboard',g('nb-dashboard'));
 }
 
@@ -1809,12 +2122,14 @@ function clearForm(){
   sv('f-visit','1');
   allChecks.forEach(function(id){sc(id,false)});
   logs=[];renderLogs();
-  clearInjForm(); clearLabForm(); clearLabMonForm(); clearTodoForm(); clearSvCare(); clearNotes(); clearCoord(); renderCoordTable();
+  clearInjForm(); clearLabForm(); clearLabMonForm(); clearTodoForm(); clearEctForm(); clearSvCare(); clearNotes(); clearCoord(); renderCoordTable();
   setTimeout(function(){
     updateAdmitSummary();
     var t=new Date();
     var logDateEl=g('log-date'); if(logDateEl) logDateEl.value=t.getFullYear()+'-'+(t.getMonth()<9?'0':'')+(t.getMonth()+1)+'-'+(t.getDate()<10?'0':'')+t.getDate();
     var logTimeEl=g('log-time'); if(logTimeEl) logTimeEl.value=(t.getHours()<10?'0':'')+t.getHours()+':'+(t.getMinutes()<10?'0':'')+t.getMinutes();
+    logAutoShiftIfToday();
+   
   },50);
 }
 function cancelEdit(){editingHN=null;logs=[];clearForm();renderEkardex();showPage('page-ekardex');}
@@ -1827,12 +2142,13 @@ function loadPatientToForm(pt){
   if(pt.injData) writeInjToForm(pt.injData);
   if(pt.labData) writeLabToForm(pt.labData);
   if(pt.labMonData) writeLabMonToForm(pt.labMonData); else clearLabMonForm();
+  if(pt.ectData) writeEctToForm(pt.ectData); else clearEctForm();
   if(pt.todoData) writeTodoToForm(pt.todoData); else clearTodoForm();
   if(pt.svcare) writeSvCare(pt.svcare);
   if(pt.notes) writeNotes(pt.notes);
   if(pt.coordData) writeCoord(pt.coordData); else renderCoordTable();
   logs=(pt.logs||[]).slice(); renderLogs();
-  setTimeout(function(){ updateAdmitSummary(); logSetNow(); },50);
+  setTimeout(function(){ updateAdmitSummary(); logSetNow(); renderStaffDropdown('doctor'); renderStaffDropdown('nurse'); },50);
 }
 
 /* ── DATE HELPER: yyyy-mm-dd → วัน เดือน พ.ศ. ── */
@@ -1899,6 +2215,25 @@ function updateAdmitSummary(){
   if(time) parts.push('เวลา '+time+' น.');
   textEl.textContent=parts.join(' ');
   el.style.display='block';
+}
+
+function getShiftByHour(h){
+  if(h>=8&&h<16) return 0;   // เวรเช้า
+  if(h>=16&&h<24) return 1;  // เวรบ่าย
+  return 2;                   // เวรดึก 00-07
+}
+
+function logAutoShiftIfToday(){
+  var dateEl=g('log-date'), timeEl=g('log-time'), shiftSel=g('log-shift');
+  if(!dateEl||!shiftSel) return;
+  var today=new Date();
+  var todayStr=today.getFullYear()+'-'+(today.getMonth()<9?'0':'')+(today.getMonth()+1)+'-'+(today.getDate()<10?'0':'')+today.getDate();
+  // เลือกเวรอัตโนมัติเฉพาะเมื่อเป็นวันปัจจุบัน
+  if(dateEl.value===todayStr){
+    var h=timeEl&&timeEl.value ? parseInt(timeEl.value.split(':')[0]) : today.getHours();
+    shiftSel.selectedIndex=getShiftByHour(h);
+  }
+  // ถ้าเป็นวันอื่น ไม่แตะ dropdown ให้เลือกเองได้
 }
 
 function addLog(){
@@ -2302,16 +2637,15 @@ function bedEditPatient(){
 function bedDischarge(){
   var hn=BEDS[_bedIdx]; if(!hn) return;
   var p=DB.find(function(x){return x.hn===hn}); if(!p) return;
-  if(!confirm('จำหน่าย "'+p.name+'" ออกจากแผนก?\nเตียง '+(+_bedIdx+1)+' จะถูกเปิดว่าง')) return;
-  p.status='จำหน่าย';
-  BEDS[_bedIdx]=null;
+  if(!confirm('จำหน่าย "'+p.name+'" ออกจากแผนก?\nข้อมูลจะถูกเก็บในคลังข้อมูล 1 ปี')) return;
+  dischargeToArchive(hn,'จำหน่าย');
   closeBedModal(); renderDash();
 }
 function bedTransfer(){
   var hn=BEDS[_bedIdx]; if(!hn) return;
   var p=DB.find(function(x){return x.hn===hn}); if(!p) return;
-  if(!confirm('ย้าย "'+p.name+'" ออกจากตึกนี้?\nเตียง '+(+_bedIdx+1)+' จะถูกเปิดว่าง')) return;
-  BEDS[_bedIdx]=null;
+  if(!confirm('ย้าย "'+p.name+'" ออกจากตึกนี้?\nข้อมูลจะถูกเก็บในคลังข้อมูล 1 ปี')) return;
+  dischargeToArchive(hn,'ย้ายวอร์ด');
   closeBedModal(); renderDash();
 }
 function bedChangeStatus(){
@@ -2734,10 +3068,29 @@ function nav(name,btn){
   if(name==='form'||name==='ekardex') renderEkardex();
 }
 function printPage(pid){
+  // ก่อนพิมพ์ — ซ่อน section-bar ที่ไม่มีอะไรถูกติ๊ก
+  var sections=['hattakan','activity','coord','smiv'];
+  var hidden=[];
+  sections.forEach(function(sec){
+    var headerRow=document.querySelector('.print-section-'+sec);
+    var contentRow=headerRow?headerRow.nextElementSibling:null;
+    if(!headerRow||!contentRow) return;
+    var checks=contentRow.querySelectorAll('input[type="checkbox"]');
+    var anyChecked=Array.from(checks).some(function(c){return c.checked;});
+    if(!anyChecked){
+      headerRow.setAttribute('data-print-hidden','1');
+      contentRow.setAttribute('data-print-hidden','1');
+      headerRow.style.display='none';
+      contentRow.style.display='none';
+      hidden.push(headerRow,contentRow);
+    }
+  });
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('print-target')});
   g(pid).classList.add('print-target');
   window.print();
   g(pid).classList.remove('print-target');
+  // คืนค่า rows ที่ซ่อนไว้กลับมา
+  hidden.forEach(function(row){row.style.display='';});
 }
 
 /* ── SAMPLE DATA ── */
@@ -2767,112 +3120,161 @@ function updateFormDateSub(val){
       Execute as: Me | Who has access: Anyone
    4. Copy URL มาวางใน ⚙ ตั้งค่า ในโปรแกรม
    ══════════════════════════════════════════════════════════ */
-var API_URL  = (function(){
-  var loc=window.location;
-  if(loc.protocol==='file:') return ''; // เปิดจากไฟล์ → ตั้งเองผ่าน ⚙
-  return loc.protocol+'//'+loc.host+loc.pathname.replace(/\/[^\/]*$/,'/')+'/api.php';
+/* ══════════════════════════════════════════════
+   GOOGLE SHEETS SYNC SYSTEM
+   ══════════════════════════════════════════════ */
+var API_URL  = '';
+var API_PASS = '';
+
+// โหลด settings จาก localStorage
+(function(){
+  try{
+    var u=localStorage.getItem('ekarde_url');
+    var p=localStorage.getItem('ekarde_pass');
+    if(u) API_URL=u;
+    if(p) API_PASS=p;
+  }catch(e){}
 })();
-var API_PASS = '12345678';
 
 function isConfigured(){ return !!(API_URL && API_URL.startsWith('https://')); }
 
 function setSyncStatus(msg,color){
-  var el=g('sync-status'); if(!el)return;
+  var el=g('sync-status'); if(!el) return;
   el.textContent=msg;
   el.style.background=color||'#f0f0f0';
   el.style.color=color==='#dcfce7'?'#166534':color==='#fee2e2'?'#dc2626':'#555';
 }
 
-function apiGet(params, cb){
-  var url=API_URL+'?pw='+encodeURIComponent(API_PASS);
-  Object.keys(params).forEach(function(k){
-    url+='&'+k+'='+encodeURIComponent(typeof params[k]==='object'?JSON.stringify(params[k]):params[k]);
-  });
-  fetch(url).then(function(r){return r.json();}).then(cb).catch(function(){cb({ok:false,msg:'เชื่อมต่อไม่ได้'});});
+// ── Core API call ──────────────────────────────
+function gsCall(payload, cb){
+  if(!isConfigured()){cb({ok:false,msg:'ยังไม่ได้ตั้งค่า URL'});return;}
+  payload.pw = API_PASS;
+  fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  })
+  .then(function(r){return r.json();})
+  .then(cb)
+  .catch(function(e){cb({ok:false,msg:'เชื่อมต่อไม่ได้: '+e.message});});
 }
 
+// ── Sync โหลดข้อมูลทั้งหมดจาก Sheets ──────────
 function syncLoad(){
   if(!isConfigured()){renderDash();return;}
   setSyncStatus('⏳ กำลังโหลด...','#fef9c3');
-  apiGet({action:'load'},function(d){
+  gsCall({action:'load'}, function(d){
     if(!d.ok){setSyncStatus('❌ '+d.msg,'#fee2e2');renderDash();return;}
-    if(d.db&&d.db.length) DB=d.db;
-    if(d.beds) BEDS=d.beds;
+    if(d.db&&d.db.length)   DB=d.db;
+    if(d.beds)              BEDS=d.beds;
+    if(d.archive&&d.archive.length) localStorage.setItem('ekarde_archive',JSON.stringify(d.archive));
+    lsSave();
     var t=new Date();
     setSyncStatus('✓ ซิงค์ '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'),'#dcfce7');
-    renderDash();
+    renderDash(); renderEkardex();
   });
 }
 
-function syncSavePatient(pt){
-  if(!isConfigured())return;
-  setSyncStatus('⏳ กำลังบันทึก...','#fef9c3');
-  apiGet({action:'savePatient',patient:pt},function(d){
-    setSyncStatus(d.ok?'✓ บันทึกแล้ว':'❌ '+d.msg, d.ok?'#dcfce7':'#fee2e2');
-    syncSaveBeds();
-  });
-}
-
-function syncSaveBeds(){
-  if(!isConfigured())return;
-  apiGet({action:'saveBeds',beds:BEDS},function(){});
-}
-
+// ── Push ข้อมูลทั้งหมดขึ้น Sheets ──────────────
 function syncSaveAll(){
-  if(!isConfigured()){setSyncStatus('⚠ ยังไม่ได้ตั้งค่า API URL','#fef9c3');openSettings();return;}
-  setSyncStatus('⏳ กำลังบันทึกทั้งหมด...','#fef9c3');
-  apiGet({action:'saveAll',db:DB,beds:BEDS},function(d){
+  if(!isConfigured()){setSyncStatus('⚠ ยังไม่ได้ตั้งค่า','#fef9c3');openSettings();return;}
+  setSyncStatus('⏳ กำลัง push...','#fef9c3');
+  var archive=archiveGetAll();
+  gsCall({action:'saveAll', db:DB, beds:BEDS, archive:archive}, function(d){
     var t=new Date();
-    setSyncStatus(d.ok?'✓ บันทึกทั้งหมดแล้ว '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'):'❌ '+d.msg, d.ok?'#dcfce7':'#fee2e2');
+    setSyncStatus(
+      d.ok?'✓ push แล้ว '+t.getHours()+':'+String(t.getMinutes()).padStart(2,'0'):'❌ '+(d.msg||'ผิดพลาด'),
+      d.ok?'#dcfce7':'#fee2e2'
+    );
   });
 }
 
+// ── Auto-push หลัง save ──────────────────────
+function syncSavePatient(pt){
+  if(!isConfigured()) return;
+  var archive=archiveGetAll();
+  gsCall({action:'saveAll', db:DB, beds:BEDS, archive:archive}, function(d){
+    setSyncStatus(d.ok?'✓ ซิงค์แล้ว':'❌ sync ล้มเหลว', d.ok?'#dcfce7':'#fee2e2');
+  });
+}
+
+// ── Settings popup ────────────────────────────
 function openSettings(){
-  var html='<div style="font-size:12px;color:#555;margin-bottom:12px">ตั้งค่าการเชื่อมต่อ Google Sheets</div>'+
-    '<div style="margin-bottom:8px"><label style="font-size:11px;font-weight:600">Apps Script URL</label>'+
-    '<input type="text" id="set-url" value="'+API_URL+'" placeholder="https://script.google.com/macros/s/..." '+
-    'style="width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 8px;font-size:12px;margin-top:3px;font-family:inherit"></div>'+
-    '<div style="margin-bottom:12px"><label style="font-size:11px;font-weight:600">Password</label>'+
-    '<input type="password" id="set-pass" value="'+API_PASS+'" '+
-    'style="width:100%;border:1px solid #ccc;border-radius:4px;padding:6px 8px;font-size:12px;margin-top:3px;font-family:inherit"></div>'+
-    '<div style="background:#f8faff;border:1px solid #c5d9f7;border-radius:6px;padding:10px;font-size:11px;color:#1e3a6e;line-height:1.9">'+
-    '<b>วิธีตั้งค่า (ทำครั้งเดียว):</b><br>'+
-    '1. เปิด Google Sheet ใหม่<br>'+
-    '2. Extensions → Apps Script<br>'+
-    '3. วางโค้ดจากไฟล์ <b>Code.gs</b> → บันทึก<br>'+
-    '4. Deploy → New deployment → Web App<br>'+
-    '&nbsp;&nbsp;&nbsp;Execute as: <b>Me</b> | Access: <b>Anyone</b><br>'+
-    '5. Copy URL มาวางช่องบน<br>'+
-    '6. ตั้ง Password ให้ตรงกับใน Code.gs'+
+  var iS='width:100%;border:1px solid #ddd;border-radius:5px;padding:7px 10px;font-size:12px;margin-top:4px;font-family:inherit';
+  var html=
+    '<div style="margin-bottom:14px">'+
+      '<div style="font-size:13px;font-weight:700;color:#1e3a6e;margin-bottom:2px">เชื่อมต่อ Google Sheets</div>'+
+      '<div style="font-size:11px;color:#888">ข้อมูลจะ sync ขึ้น-ลง Sheet อัตโนมัติหลังบันทึกทุกครั้ง</div>'+
     '</div>'+
-    '<div style="display:flex;gap:8px;margin-top:12px">'+
-    '<button onclick="closeModal()" class="btn-outline" style="flex:1">ยกเลิก</button>'+
-    '<button onclick="saveSettings()" class="btn-primary" style="flex:1">บันทึกและเชื่อมต่อ</button>'+
+
+    '<div style="margin-bottom:10px">'+
+      '<label style="font-size:11px;font-weight:600;color:#555">Apps Script Web App URL</label>'+
+      '<input type="text" id="set-url" value="'+API_URL+'" placeholder="https://script.google.com/macros/s/..." style="'+iS+'">'+
+    '</div>'+
+    '<div style="margin-bottom:14px">'+
+      '<label style="font-size:11px;font-weight:600;color:#555">Password (ตั้งใน Code.gs)</label>'+
+      '<input type="password" id="set-pass" value="'+API_PASS+'" placeholder="รหัสผ่าน" style="'+iS+'">'+
+    '</div>'+
+
+    '<details style="margin-bottom:14px">'+
+      '<summary style="font-size:11px;font-weight:600;color:#185FA5;cursor:pointer;margin-bottom:6px">📖 วิธีตั้งค่า (คลิกเพื่อดู)</summary>'+
+      '<div style="background:#f8faff;border:1px solid #c5d9f7;border-radius:6px;padding:10px;font-size:11px;color:#1e3a6e;line-height:2">'+
+        '1. เปิด Google Sheet ใหม่<br>'+
+        '2. Extensions → Apps Script<br>'+
+        '3. ลบโค้ดเดิม → วาง Code.gs → บันทึก<br>'+
+        '4. แก้ <b>PASSWORD</b> ในโค้ดให้ตรงกับช่องบน<br>'+
+        '5. Deploy → New deployment → Web App<br>'+
+        '&nbsp;&nbsp;&nbsp;Execute as: <b>Me</b> &nbsp;|&nbsp; Access: <b>Anyone</b><br>'+
+        '6. Copy URL มาวางช่อง URL บน<br>'+
+        '7. กด "บันทึกและทดสอบ"'+
+      '</div>'+
+    '</details>'+
+
+    '<div id="set-test-result" style="display:none;margin-bottom:10px;padding:7px 10px;border-radius:5px;font-size:12px"></div>'+
+
+    '<div style="display:flex;gap:8px">'+
+      '<button onclick="testConnection()" style="flex:1;padding:7px;border:1px solid #185FA5;border-radius:5px;background:#fff;color:#185FA5;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🔌 ทดสอบการเชื่อมต่อ</button>'+
+      '<button onclick="saveSettings()" style="flex:1;padding:7px;background:#185FA5;color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">💾 บันทึกและเชื่อมต่อ</button>'+
     '</div>';
-  g('modal-title').innerHTML='⚙ ตั้งค่า Google Sheets';
+
+  g('modal-title').innerHTML='⚙ ตั้งค่า Google Sheets <button class="close-btn" onclick="closeModal()">&#215;</button>';
   g('modal-body').innerHTML=html;
-  var mf=document.querySelector('#modal .modal-footer');if(mf)mf.style.display='none';
+  document.querySelectorAll('#modal .btn-outline,#modal .btn-primary').forEach(function(b){b.style.display='none';});
   g('modal').classList.add('open');
 }
 
+function testConnection(){
+  var url=(document.getElementById('set-url')||{}).value.trim();
+  var pass=(document.getElementById('set-pass')||{}).value.trim();
+  var resEl=document.getElementById('set-test-result');
+  if(!url){if(resEl){resEl.style.display='block';resEl.style.background='#fee2e2';resEl.style.color='#dc2626';resEl.textContent='⚠ กรุณากรอก URL ก่อน';}return;}
+  if(resEl){resEl.style.display='block';resEl.style.background='#fef9c3';resEl.style.color='#d97706';resEl.textContent='⏳ กำลังทดสอบ...';}
+  fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ping',pw:pass})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(resEl){
+        resEl.style.background=d.ok?'#dcfce7':'#fee2e2';
+        resEl.style.color=d.ok?'#166534':'#dc2626';
+        resEl.textContent=d.ok?'✓ เชื่อมต่อสำเร็จ — พร้อมใช้งาน':'❌ '+(d.msg||'ผิดพลาด — ตรวจสอบ URL และ Password');
+      }
+    })
+    .catch(function(e){
+      if(resEl){resEl.style.background='#fee2e2';resEl.style.color='#dc2626';resEl.textContent='❌ เชื่อมต่อไม่ได้: '+e.message;}
+    });
+}
+
 function saveSettings(){
-  var url=document.getElementById('set-url').value.trim();
-  var pass=document.getElementById('set-pass').value.trim();
+  var url=(document.getElementById('set-url')||{}).value.trim();
+  var pass=(document.getElementById('set-pass')||{}).value.trim();
   if(!url){alert('กรุณากรอก URL');return;}
   API_URL=url; API_PASS=pass;
   try{localStorage.setItem('ekarde_url',url);localStorage.setItem('ekarde_pass',pass);}catch(e){}
   closeModal();
+  document.querySelectorAll('#modal .btn-outline,#modal .btn-primary').forEach(function(b){b.style.display='';});
   syncLoad();
 }
 
-// โหลด settings จาก localStorage ถ้ามี
-(function(){
-  try{
-    var u=localStorage.getItem('ekarde_url');
-    var p=localStorage.getItem('ekarde_pass');
-    if(u)API_URL=u; if(p)API_PASS=p;
-  }catch(e){}
-})();
+
 
 /* ── E-KARDEX INLINE SLIDER ── */
 var _ekIdx  = 0;
@@ -2938,22 +3340,28 @@ function ekRenderSlide(){
   var it=_ekList[_ekIdx]; if(!it) return;
 
   if(it.isNew||!it.p){
-    // ── เตียงว่าง / รับใหม่ → ล้างฟอร์มแล้วแสดง page-form ซ้อนใน ekardex ──
+    // ── เตียงว่าง / รับใหม่ ──
+    // คืน doc-wrap กลับ page-form ก่อนเสมอ (ถ้าหลุดออกมาอยู่ใน wrap)
+    var formPage=g('page-form');
+    var wrap2=g('ek-form-wrap');
+    if(formPage&&wrap2){
+      var stray=wrap2.querySelector('.doc-wrap');
+      if(stray) formPage.appendChild(stray);
+    }
+
     editingHN=null; logs=[];
     _pendingBedIdx=(!it.isNew)?it.bedIdx:null;
     clearForm(); renderCoordTable();
-    // ย้าย doc-wrap ของ page-form มาโชว์ใน wrap โดยตรง (ไม่ clone)
-    var formPage=g('page-form');
+
+    // ย้าย doc-wrap มาโชว์ใน wrap
     if(formPage){
       var docWrap=formPage.querySelector('.doc-wrap');
       if(docWrap){
         wrap.innerHTML='';
         wrap.appendChild(docWrap);
-        // อัปเดต title + bed badge
         var titleEl=g('ekardex-form-title');
         if(titleEl) titleEl.textContent='E-Kardex — '+(it.isNew?'รับผู้ป่วยใหม่':'เตียง '+(it.bedIdx+1)+' — รับผู้ป่วยใหม่');
         updateBedBadge(it.isNew?null:it.bedIdx+1);
-        // ปุ่มบันทึกใหญ่ท้ายฟอร์ม
         var bar=document.createElement('div');
         bar.className='no-print';
         bar.style.cssText='display:flex;gap:8px;margin-top:14px;padding-bottom:8px';
@@ -2964,14 +3372,11 @@ function ekRenderSlide(){
       }
     }
   } else {
-    // ── มีผู้ป่วย → คืน doc-wrap กลับ page-form ถ้าถูกเอาออกไป ──
+    // ── มีผู้ป่วย → คืน doc-wrap กลับ page-form ก่อนเสมอ ──
     var formPage=g('page-form');
-    if(formPage&&!formPage.querySelector('.doc-wrap')){
-      var docWrap=wrap.querySelector('.doc-wrap');
-      if(docWrap) formPage.appendChild(docWrap);
-    }
-
-    // แสดงสรุปข้อมูล + ปุ่มแก้ไข/จัดการ
+    var docWrapInWrap=wrap.querySelector('.doc-wrap');
+    if(formPage&&docWrapInWrap) formPage.appendChild(docWrapInWrap);
+    // ล้าง wrap แล้วแสดงสรุปข้อมูล
     var p=it.p;
     var svc=p.svcare||{};
     var sc={s:'#fee2e2',v:'#fee2e2',c:'#fef9c3',a:'#fef9c3',r:'#ede9fe',e:'#dbeafe'};
@@ -3057,17 +3462,16 @@ function ekEditConfirm(){
 
 function ekTransferConfirm(){
   var it=_ekList[_ekIdx]; if(!it||!it.p) return;
-  if(!confirm('ย้าย "'+it.p.name+'" ออกจากเตียง '+(it.bedIdx+1)+'?\n(ผู้ป่วยยังอยู่ในระบบ เตียงจะว่าง)')) return;
-  BEDS[it.bedIdx]=null; lsSave(); renderDash();
-  _ekIdx=Math.max(0,_ekIdx-1); buildEkList(); renderEkardex();
+  if(!confirm('ย้าย "'+it.p.name+'" ออกจากวอร์ด?\nข้อมูลจะถูกเก็บในคลังข้อมูล 1 ปี')) return;
+  dischargeToArchive(it.p.hn,'ย้ายวอร์ด');
+  renderDash(); _ekIdx=Math.max(0,_ekIdx-1); buildEkList(); renderEkardex();
 }
 
 function ekDischargeConfirm(){
   var it=_ekList[_ekIdx]; if(!it||!it.p) return;
-  if(!confirm('จำหน่าย "'+it.p.name+'" ออกจากแผนก?')) return;
-  it.p.status='จำหน่าย'; BEDS[it.bedIdx]=null;
-  lsSave(); renderDash();
-  _ekIdx=Math.max(0,_ekIdx-1); buildEkList(); renderEkardex();
+  if(!confirm('จำหน่าย "'+it.p.name+'" ออกจากแผนก?\nข้อมูลจะถูกเก็บในคลังข้อมูล 1 ปี')) return;
+  dischargeToArchive(it.p.hn,'จำหน่าย');
+  renderDash(); _ekIdx=Math.max(0,_ekIdx-1); buildEkList(); renderEkardex();
 }
 
 function ekAddNew(){
@@ -3150,21 +3554,171 @@ bedTransfer =function(){ _oBT(); lsSave(); };
 setBedStatus=function(s){ _oBS(s); lsSave(); };
 
 
-renderDash();
-setTimeout(renderEkardex, 0);
-  // ตั้งค่าให้ดึงข้อมูลจากออนไลน์อัตโนมัติทุกๆ 3 นาที (180000 มิลลิวินาที)
-setInterval(function() {
-    if(isConfigured()) {
-        syncLoad(); 
-        console.log("Auto-syncing data...");
-    }
-}, 180000);
-  // เมื่อเปิดเว็บมา ให้โหลดจากออนไลน์ทันทีถ้าตั้งค่าไว้แล้ว
-window.addEventListener('load', function() {
-  if(isConfigured()) {
-    setTimeout(syncLoad, 1000); // รอ 1 วินาทีแล้วโหลดข้อมูลจาก Sheets
+/* ══════════════════════════════════════════════
+   ARCHIVE SYSTEM — เก็บ 1 ปี แล้วลบอัตโนมัติ
+   ══════════════════════════════════════════════ */
+
+function archiveGetAll(){
+  try{ return JSON.parse(localStorage.getItem('ekarde_archive')||'[]'); }catch(e){return [];}
+}
+function archiveSaveAll(arr){
+  try{ localStorage.setItem('ekarde_archive',JSON.stringify(arr)); }catch(e){}
+}
+
+// ย้ายคนไข้เข้า archive พร้อม timestamp + เหตุผล
+function archivePatient(p, reason){
+  var arr=archiveGetAll();
+  var entry=JSON.parse(JSON.stringify(p)); // deep copy
+  entry._archivedAt=new Date().toISOString();
+  entry._archiveReason=reason||'จำหน่าย';
+  // ลบ entry เก่าที่ HN ซ้ำออกก่อน (อัปเดต)
+  arr=arr.filter(function(x){return x.hn!==p.hn;});
+  arr.push(entry);
+  archiveSaveAll(arr);
+}
+
+// ลบ archive ที่เกิน 1 ปีอัตโนมัติ (เรียกตอน init)
+function archivePurgeOld(){
+  var arr=archiveGetAll();
+  var cutoff=new Date();
+  cutoff.setFullYear(cutoff.getFullYear()-1);
+  var before=arr.length;
+  arr=arr.filter(function(x){
+    if(!x._archivedAt) return true;
+    return new Date(x._archivedAt)>cutoff;
+  });
+  if(arr.length!==before){
+    archiveSaveAll(arr);
+    console.log('Archive: ลบข้อมูลเกิน 1 ปี '+(before-arr.length)+' ราย');
   }
-});
+}
+
+// ดึงจาก DB แล้วเข้า archive + ลบจาก active DB
+function dischargeToArchive(hn, reason){
+  var idx=DB.findIndex(function(x){return x.hn===hn;});
+  if(idx<0) return;
+  archivePatient(DB[idx], reason);
+  DB.splice(idx,1);
+  // เคลียร์เตียง
+  for(var i=0;i<BEDS.length;i++){if(BEDS[i]===hn)BEDS[i]=null;}
+  lsSave();
+}
+
+// หน้า archive
+function openArchive(){
+  var arr=archiveGetAll();
+  arr.sort(function(a,b){return new Date(b._archivedAt)-new Date(a._archivedAt);});
+
+  var rows=arr.length ? arr.map(function(p,i){
+    var d=new Date(p._archivedAt);
+    var dateStr=d.getDate()+'/'+(d.getMonth()+1)+'/'+(d.getFullYear()+543-2500+2500);
+    // format Thai date
+    var months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    dateStr=d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543);
+    var badge=p._archiveReason==='จำหน่าย'
+      ?'<span style="background:#fee2e2;color:#dc2626;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600">จำหน่าย</span>'
+      :'<span style="background:#fef9c3;color:#d97706;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600">ย้ายวอร์ด</span>';
+    var pending=(p.todoData||[]).filter(function(t){return !t.done;}).length;
+    return'<tr style="border-bottom:1px solid #f0f0f0">'+
+      '<td style="padding:6px 8px;font-size:12px;font-weight:600">'+p.name+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:#64748b">'+p.hn+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px">'+p.dx+'</td>'+
+      '<td style="padding:6px 8px;text-align:center">'+badge+'</td>'+
+      '<td style="padding:6px 8px;font-size:11px;color:#64748b">'+dateStr+'</td>'+
+      (pending?'<td style="padding:6px 8px;font-size:11px;color:#d97706">⚠ ค้าง '+pending+' รายการ</td>':'<td style="padding:6px 8px;font-size:11px;color:#86efac">—</td>')+
+      '<td style="padding:6px 8px;text-align:center">'+
+        '<button onclick="archiveReadmit(\''+p.hn+'\')" style="padding:3px 10px;border:1px solid #185FA5;border-radius:4px;background:#fff;color:#185FA5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">รับกลับ</button>'+
+        ' <button onclick="archiveView(\''+p.hn+'\')" style="padding:3px 10px;border:1px solid #64748b;border-radius:4px;background:#fff;color:#64748b;font-size:11px;cursor:pointer;font-family:inherit">ดูข้อมูล</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="7" style="padding:2rem;text-align:center;color:#bbb">ยังไม่มีข้อมูลในคลัง</td></tr>';
+
+  var html=
+    '<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">'+
+      '<div style="font-size:11px;color:#64748b">ข้อมูลถูกเก็บไว้ 1 ปี &nbsp;|&nbsp; ทั้งหมด '+arr.length+' ราย</div>'+
+      '<input type="text" id="arc-search" placeholder="ค้นหาชื่อ / HN..." onkeyup="archiveFilter(this.value)" style="border:1px solid #ddd;border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit;width:180px">'+
+    '</div>'+
+    '<div style="overflow-x:auto;max-height:420px;overflow-y:auto">'+
+    '<table id="arc-table" style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead style="position:sticky;top:0;background:#f8faff">'+
+        '<tr>'+
+          '<th style="padding:6px 8px;text-align:left;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">ชื่อ-สกุล</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">HN</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">Dx</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">เหตุผล</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">วันที่</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">รายการค้าง</th>'+
+          '<th style="padding:6px 8px;font-size:11px;color:#555;border-bottom:2px solid #e2e8f0">จัดการ</th>'+
+        '</tr>'+
+      '</thead>'+
+      '<tbody id="arc-body">'+rows+'</tbody>'+
+    '</table></div>';
+
+  g('modal-title').innerHTML='🗄️ คลังข้อมูล e-Karde <button class="close-btn" onclick="closeModal()">&#215;</button>';
+  g('modal-body').innerHTML=html;
+  document.querySelectorAll('#modal .btn-outline,#modal .btn-primary').forEach(function(b){b.style.display='none';});
+  g('modal').classList.add('open');
+}
+
+function archiveFilter(q){
+  var rows=document.querySelectorAll('#arc-body tr');
+  q=q.toLowerCase();
+  rows.forEach(function(r){
+    r.style.display=r.textContent.toLowerCase().indexOf(q)>=0?'':'none';
+  });
+}
+
+function archiveView(hn){
+  var arr=archiveGetAll();
+  var p=arr.find(function(x){return x.hn===hn;}); if(!p) return;
+  var d=new Date(p._archivedAt);
+  var months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  var dateStr=d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543)+' '+d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')+'น.';
+  var logs=(p.logs||[]).map(function(l){
+    return'<div style="padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:11px"><span style="color:#185FA5;font-weight:600">'+l.type+'</span> <span style="color:#888">'+l.shift+' '+l.dt+' — '+l.by+'</span><br>'+l.text+'</div>';
+  }).join('');
+  var todos=(p.todoData||[]).map(function(t){
+    return'<div style="font-size:11px;padding:2px 0;color:'+(t.done?'#86efac':'#854d0e')+'">'+
+      (t.done?'✓ ':'⏳ ')+t.text+(t.doneAt?' ('+t.doneAt+')':'')+'</div>';
+  }).join('');
+
+  var html=
+    '<div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px">'+p.name+'</div>'+
+    '<div style="font-size:11px;color:#64748b;margin-bottom:12px">HN: '+p.hn+' &nbsp;|&nbsp; '+p._archiveReason+' เมื่อ '+dateStr+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;font-size:12px">'+
+      '<div><b>Dx:</b> '+p.dx+'</div>'+
+      '<div><b>สิทธิ์:</b> '+(p.coverage||'-')+'</div>'+
+      '<div><b>แพทย์:</b> '+(p.doctor||'-')+'</div>'+
+      '<div><b>พยาบาล:</b> '+(p.nurse||'-')+'</div>'+
+    '</div>'+
+    (todos?'<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">รายการค้าง/F/U</div>'+todos+'</div>':'')+
+    (logs?'<div><div style="font-size:11px;font-weight:700;color:#555;margin-bottom:4px">บันทึกประจำเวร</div>'+logs+'</div>':'<div style="font-size:11px;color:#bbb">ไม่มีบันทึก</div>');
+
+  g('modal-title').innerHTML='📋 ประวัติผู้ป่วย <button class="close-btn" onclick="openArchive()">← กลับ</button>';
+  g('modal-body').innerHTML=html;
+}
+
+function archiveReadmit(hn){
+  var arr=archiveGetAll();
+  var p=arr.find(function(x){return x.hn===hn;}); if(!p) return;
+  if(!confirm('รับ "'+p.name+'" กลับเข้าวอร์ด?\nข้อมูลเดิมจะถูกโหลดเข้าฟอร์มรับใหม่')) return;
+  // โหลดข้อมูลเดิมเข้าฟอร์ม
+  closeModal();
+  document.querySelectorAll('#modal .btn-outline,#modal .btn-primary').forEach(function(b){b.style.display='';});
+  // เปลี่ยนสถานะเป็น รับย้าย + ล้าง archive entry
+  p.status='รับย้าย';
+  delete p._archivedAt; delete p._archiveReason;
+  editingHN=null;
+  loadPatientToForm(p);
+  // นับครั้งที่รับ
+  var visitEl=g('f-visit'); if(visitEl) visitEl.value=(parseInt(p.visit||1)+1);
+  // ไปที่หน้า ekardex slot รับใหม่
+  nav('form',g('nb-form'));
+}
+
+archivePurgeOld();
+setTimeout(function(){ renderStaffDropdown('doctor'); renderStaffDropdown('nurse'); },300);
+
 </script>
 <!-- BED ACTION MODAL -->
 <div class="modal-overlay no-print" id="bed-modal">
