@@ -3145,18 +3145,19 @@ function setSyncStatus(msg,color){
   el.style.color=color==='#dcfce7'?'#166534':color==='#fee2e2'?'#dc2626':'#555';
 }
 
-// ── Core API call ──────────────────────────────
+// ── Core API call — ใช้ GET + URLSearchParams เพื่อหลีกเลี่ยง CORS preflight ──
 function gsCall(payload, cb){
   if(!isConfigured()){cb({ok:false,msg:'ยังไม่ได้ตั้งค่า URL'});return;}
-  payload.pw = API_PASS;
-  fetch(API_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  })
-  .then(function(r){return r.json();})
-  .then(cb)
-  .catch(function(e){cb({ok:false,msg:'เชื่อมต่อไม่ได้: '+e.message});});
+  var params=new URLSearchParams();
+  params.append('pw', API_PASS);
+  Object.keys(payload).forEach(function(k){
+    var v=payload[k];
+    params.append(k, typeof v==='object'?JSON.stringify(v):v);
+  });
+  fetch(API_URL+'?'+params.toString())
+    .then(function(r){return r.json();})
+    .then(cb)
+    .catch(function(e){cb({ok:false,msg:'เชื่อมต่อไม่ได้: '+e.message});});
 }
 
 // ── Sync โหลดข้อมูลทั้งหมดจาก Sheets ──────────
